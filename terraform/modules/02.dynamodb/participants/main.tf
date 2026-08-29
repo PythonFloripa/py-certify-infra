@@ -17,32 +17,9 @@ resource "aws_dynamodb_table" "participants" {
     type = "S"
   }
 
-  attribute {
-    name = "cpf"
-    type = "S"
-  }
-
-  attribute {
-    name = "city"
-    type = "S"
-  }
-
   global_secondary_index {
     name            = "participants_by_email_idx"
     hash_key        = "email"
-    projection_type = "ALL"
-  }
-
-  global_secondary_index {
-    name            = "participants_by_cpf_idx"
-    hash_key        = "cpf"
-    projection_type = "ALL"
-  }
-
-  global_secondary_index {
-    name            = "participants_by_city_idx"
-    hash_key        = "city"
-    range_key       = "email"
     projection_type = "ALL"
   }
 
