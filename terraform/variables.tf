@@ -26,6 +26,20 @@ variable "github_repo" {
   default     = "py-certify-infra"
 }
 
+# IDs numéricos imutáveis (org/repo). Usados no sub do OIDC, que passou ao
+# formato imutável (repo:owner@ID/repo@ID:...) após o rename do repositório.
+variable "github_org_id" {
+  description = "ID numérico imutável da organização no GitHub"
+  type        = string
+  default     = "6483359"
+}
+
+variable "github_repo_id" {
+  description = "ID numérico imutável do repositório no GitHub"
+  type        = string
+  default     = "1045206527"
+}
+
 variable "github_actions_role_arn" {
   description = "ARN da role IAM para GitHub Actions"
   type        = string

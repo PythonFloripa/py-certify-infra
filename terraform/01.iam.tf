@@ -25,7 +25,7 @@ data "aws_iam_policy_document" "github_action_assume_role" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_org}/${var.github_repo}:*", "repo:${var.github_org}/certified-builder-app-py:*"]
+      values   = ["repo:${var.github_org}@${var.github_org_id}/${var.github_repo}@${var.github_repo_id}:*"]
     }
   }
 }
