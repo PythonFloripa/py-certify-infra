@@ -1,16 +1,5 @@
 name: Terraform
 
-# Pipeline unificado (plan + apply) acionado somente sob demanda.
-#
-# - plan: sempre roda. Se `pr_number` for informado, faz checkout do
-#   `refs/pull/<n>/merge` e comenta o plan no PR — funciona para PRs de fork,
-#   pois roda no contexto da org (com secrets) e não exige acesso AWS ao fork.
-# - apply: só roda com `apply=true`, na branch `main` e sem `pr_number`.
-#
-# Segurança: como o plan de um PR executa o código do PR com os secrets, o
-# disparo é manual (workflow_dispatch, só quem tem write) — um mantenedor revisa
-# o PR antes de disparar.
-
 on:
   workflow_dispatch:
     inputs:
@@ -77,7 +66,7 @@ jobs:
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
           if [ -n "$PR_NUMBER" ]; then
-            echo "target_ref=refs/pull/${PR_NUMBER}/merge" >> "$GITHUB_OUTPUT"
+            echo "target_ref=refs/pull/${PR_NUMBER}/head" >> "$GITHUB_OUTPUT"
           else
             echo "target_ref=${DISPATCH_REF}" >> "$GITHUB_OUTPUT"
           fi
@@ -101,11 +90,28 @@ jobs:
           aws-region: ${{ env.TF_VAR_aws_region }}
           role-session-name: TerraformPlanSession-${{ matrix.env }}
 
-      - uses: ./.github/actions/tf_plan
+      - name: Terraform Plan
+        working-directory: ${{ matrix.dir }}
+        run: |
+          set -euo pipefail
+          terraform init -input=false -upgrade=false
+          terraform plan -input=false -out=tfplan
+          terraform show -no-color tfplan > plan-output.txt
+          {
+            echo "## Terraform Plan (${{ matrix.env }})"
+            echo '```hcl'
+            cat plan-output.txt
+            echo '```'
+          } > plan-comment.md
+
+      - name: Comentar plan no PR
+        if: ${{ inputs.pr_number != '' }}
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          working-directory: ${{ matrix.dir }}
-          env: ${{ matrix.env }}
-          pr-number: ${{ inputs.pr_number }}
+          header: terraform-plan-${{ matrix.env }}
+          number: ${{ inputs.pr_number }}
+          recreate: true
+          path: ${{ matrix.dir }}/plan-comment.md
 
   apply:
     needs: [setup, plan]
