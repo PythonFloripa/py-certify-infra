@@ -30,7 +30,7 @@ variable "lambda_memory_size" {
 variable "log_retention_days" {
   description = "Dias de retenção dos logs do CloudWatch"
   type        = number
-  default     = 3
+  default     = 90
 }
 
 
