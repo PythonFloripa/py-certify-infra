@@ -1,0 +1,43 @@
+name: 'Terraform Plan'
+description: 'Inicializa, roda o plan e (opcional) comenta o resultado num PR.'
+inputs:
+  working-directory:
+    description: 'Diretório onde rodar o Terraform.'
+    required: true
+  env:
+    description: 'Nome do ambiente (para logs e header do comentário).'
+    required: true
+  pr-number:
+    description: 'Se preenchido, comenta o plan neste PR.'
+    required: false
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    - name: Terraform Init
+      run: terraform init -input=false -upgrade=false
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+
+    - name: Terraform Plan
+      run: |
+        set -euo pipefail
+        terraform plan -input=false -out=tfplan
+        terraform show -no-color tfplan > plan-output.txt
+        {
+          echo "## Terraform Plan (${{ inputs.env }})"
+          echo '```hcl'
+          cat plan-output.txt
+          echo '```'
+        } > plan-comment.md
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+
+    - name: Comentar plan no PR
+      if: ${{ inputs.pr-number != '' }}
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        header: terraform-plan-${{ inputs.env }}
+        number: ${{ inputs.pr-number }}
+        recreate: true
+        path: ${{ inputs.working-directory }}/plan-comment.md
