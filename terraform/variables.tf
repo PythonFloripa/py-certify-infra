@@ -23,7 +23,7 @@ variable "github_org" {
 variable "github_repo" {
   description = "Repositório do GitHub"
   type        = string
-  default     = "certified-builder-infra-py"
+  default     = "py-certify-infra"
 }
 
 variable "github_actions_role_arn" {
