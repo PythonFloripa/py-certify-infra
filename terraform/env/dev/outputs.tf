@@ -9,48 +9,15 @@ output "s3_bucket_arn" {
   value       = module.s3.bucket_arn
 }
 
-# Informações das tabelas de certificados
-output "certificates_table_name" {
-  description = "Nome da tabela de certificados"
-  value       = module.certificates_table.table_name
+# Informações da tabela única DynamoDB (single-table design)
+output "dynamodb_single_table_name" {
+  description = "Nome da tabela DynamoDB única"
+  value       = module.dynamodb_single_table.table_name
 }
 
-output "certificates_table_arn" {
-  description = "ARN da tabela de certificados"
-  value       = module.certificates_table.table_arn
-}
-
-# Informações das tabelas de pedidos
-output "orders_table_name" {
-  description = "Nome da tabela de pedidos"
-  value       = module.orders_table.table_name
-}
-
-output "orders_table_arn" {
-  description = "ARN da tabela de pedidos"
-  value       = module.orders_table.table_arn
-}
-
-# Informações das tabelas de participantes
-output "participants_table_name" {
-  description = "Nome da tabela de participantes"
-  value       = module.participants_table.table_name
-}
-
-output "participants_table_arn" {
-  description = "ARN da tabela de participantes"
-  value       = module.participants_table.table_arn
-}
-
-# Informações das tabelas de produtos
-output "products_table_name" {
-  description = "Nome da tabela de produtos"
-  value       = module.products_table.table_name
-}
-
-output "products_table_arn" {
-  description = "ARN da tabela de produtos"
-  value       = module.products_table.table_arn
+output "dynamodb_single_table_arn" {
+  description = "ARN da tabela DynamoDB única"
+  value       = module.dynamodb_single_table.table_arn
 }
 
 # Informações do SQS
