@@ -6,10 +6,10 @@
 #   SK: EntityType#EntityId (mesmo formato para acesso direto)
 #
 # GSIs para padrões de acesso:
-#   GSI1: Acesso por email (participants, orders, certificates)
-#   GSI2: Acesso por product (orders, certificates)
-#   GSI3: Acesso por success flag (certificates)
-#   GSI4: Acesso por city (participants)
+#   GSI1: Acesso por UUID (certificate by ID)
+#   GSI2: Acesso por email (orders, certificates, participants)
+#   GSI3: Acesso por product (products, orders, certificates)
+#   GSI4: Acesso por success flag (certificates)
 
 resource "aws_dynamodb_table" "single_table" {
   name         = var.table_name
@@ -68,16 +68,6 @@ resource "aws_dynamodb_table" "single_table" {
     type = "S"
   }
 
-  attribute {
-    name = "GSI5PK"
-    type = "S"
-  }
-
-  attribute {
-    name = "GSI5SK"
-    type = "S"
-  }
-
   # EntityType para identificação rápida do tipo
   attribute {
     name = "EntityType"
@@ -113,14 +103,6 @@ resource "aws_dynamodb_table" "single_table" {
     name            = "GSI4"
     hash_key        = "GSI4PK"
     range_key       = "GSI4SK"
-    projection_type = "ALL"
-  }
-
-  # GSI5: CITY# lookups (participant city)
-  global_secondary_index {
-    name            = "GSI5"
-    hash_key        = "GSI5PK"
-    range_key       = "GSI5SK"
     projection_type = "ALL"
   }
 
