@@ -73,7 +73,7 @@ A seguir estão os serviços da AWS criados por este projeto e suas respectivas 
 
 #### Estrutura da Tabela
 
-A tabela utiliza um design Single-Table com chaves compostas e 5 Global Secondary Indexes (GSIs).
+A tabela utiliza um design Single-Table com chaves compostas e 4 Global Secondary Indexes (GSIs).
 
 | Atributo | Tipo | Descrição |
 |----------|------|-----------|
@@ -83,7 +83,6 @@ A tabela utiliza um design Single-Table com chaves compostas e 5 Global Secondar
 | `GSI2PK`, `GSI2SK` | String | GSI2 - Orders, Certificates, Participants por email |
 | `GSI3PK`, `GSI3SK` | String | GSI3 - Products por nome, Certificates/Orders por product |
 | `GSI4PK`, `GSI4SK` | String | GSI4 - Certificados por status de sucesso |
-| `GSI5PK`, `GSI5SK` | String | GSI5 - Participants por cidade |
 
 #### GSIs (Global Secondary Indexes)
 
@@ -93,7 +92,6 @@ A tabela utiliza um design Single-Table com chaves compostas e 5 Global Secondar
 | GSI2 | `PK: email, SK: ENTITY#` | Orders, Certificates, Participants by email |
 | GSI3 | `PK: product, SK: ENTITY#` | Products by name, Certificates/Orders by product |
 | GSI4 | `PK: SUCCESS#Y/N, SK: CERT#` | Successful/Failed certificates |
-| GSI5 | `PK: CITY#name, SK: PART#` | Participants by city |
 
 #### Entidades Suportadas
 
@@ -102,7 +100,7 @@ A tabela utiliza um design Single-Table com chaves compostas e 5 Global Secondar
 | Certificate | `CERTIFICATE#<uuid>` | `CERTIFICATE#<uuid>` | GSI1, GSI2, GSI3, GSI4 |
 | Order | `ORDER#<order_id>` | `ORDER#<order_id>` | GSI2, GSI3 |
 | Product | `PRODUCT#<product_id>` | `PRODUCT#<product_id>` | GSI3 |
-| Participant | `PARTICIPANT#<uuid>` | `PARTICIPANT#<uuid>` | GSI2, GSI5 |
+| Participant | `PARTICIPANT#<uuid>` | `PARTICIPANT#<uuid>` | GSI2 |
 
 ### Lambda
 
