@@ -68,12 +68,6 @@ resource "aws_dynamodb_table" "single_table" {
     type = "S"
   }
 
-  # EntityType para identificação rápida do tipo
-  attribute {
-    name = "EntityType"
-    type = "S"
-  }
-
   # GSI1: CERT# lookups (certificate find_by_id)
   global_secondary_index {
     name            = "GSI1"
