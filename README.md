@@ -9,6 +9,12 @@ Este projeto contém a infraestrutura como código (IaC) para a aplicação "Cer
 - **Terraform**: Ferramenta de infraestrutura como código para provisionar e gerenciar os recursos na nuvem.
 - **AWS (Amazon Web Services)**: Provedor de nuvem onde a infraestrutura da aplicação é hospedada.
 
+## Diagrama da arquitetura
+
+O diagrama interativo apresenta as rotas da API, os recursos AWS e o fluxo assíncrono de geração e notificação de certificados:
+
+[Abrir diagrama da API e arquitetura AWS](docs/api-architecture.html)
+
 ## Estrutura de Pastas
 
 A estrutura de pastas do projeto é organizada da seguinte forma:
