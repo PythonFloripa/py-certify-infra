@@ -11,9 +11,16 @@ Este projeto contém a infraestrutura como código (IaC) para a aplicação "Cer
 
 ## Diagrama da arquitetura
 
-O diagrama interativo apresenta as rotas da API, os recursos AWS e o fluxo assíncrono de geração e notificação de certificados:
+O diagrama mostra as rotas da API, os recursos AWS e o fluxo assíncrono de geração e notificação de certificados. A versão SVG fica incorporada abaixo; a animação WebM ilustra o fluxo e o HTML oferece a versão interativa.
 
-[Abrir diagrama da API e arquitetura AWS](docs/api-architecture.html)
+![Diagrama da API Certified Builder e arquitetura AWS](docs/api-certified-builder-e-arquitetura-aws.svg)
+
+<video controls preload="metadata" width="100%">
+  <source src="docs/api-certified-builder-e-arquitetura-aws.webm" type="video/webm">
+  Seu navegador não consegue reproduzir WebM. <a href="docs/api-certified-builder-e-arquitetura-aws.webm">Baixe a animação</a>.
+</video>
+
+[Abrir versão interativa do diagrama](docs/api-architecture.html)
 
 ## Estrutura de Pastas
 
