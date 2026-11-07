@@ -15,29 +15,23 @@ A estrutura de pastas do projeto é organizada da seguinte forma:
 
 ```
 /
+├── compose.ministack.yaml       # MiniStack + API e gerador locais
 ├── terraform/
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── terraform.tfvars.example
-│   ├── api-gateway/
-│   ├── bucket_s3/
-│   ├── dynamodb/
-│   │   ├── certificates/
-│   │   ├── orders/
-│   │   ├── participants/
-│   │   └── products/
-│   ├── lambda/
-│   └── sqs/
+│   ├── env/
+│   │   ├── dev/                 # AWS, backend S3
+│   │   └── ministack/           # Local, backend local
+│   └── modules/
+│       ├── 02.dynamodb/single_table/
+│       ├── 03.bucket_s3/
+│       ├── 04.sqs/
+│       ├── 05.lambda/
+│       └── 06.api-gateway/
 └── README.md
 ```
 
-- **terraform/**: Contém todos os arquivos de configuração do Terraform.
-- **terraform/main.tf**: Arquivo principal que define os módulos e a configuração do provider.
-- **terraform/variables.tf**: Declaração das variáveis utilizadas no projeto.
-- **terraform/outputs.tf**: Definição dos outputs do Terraform.
-- **terraform/terraform.tfvars.example**: Arquivo de exemplo para as variáveis do Terraform.
-- **terraform/[module]/**: Cada pasta representa um módulo do Terraform que provisiona um serviço específico na AWS.
+- **terraform/env/dev/**: Perfil Terraform AWS, com state remoto em S3.
+- **terraform/env/ministack/**: Perfil isolado para MiniStack, com state local.
+- **terraform/modules/**: Módulos reutilizáveis para DynamoDB, S3, SQS, Lambda e API Gateway.
 
 ## Serviços Criados e Suas Variáveis
 
@@ -65,18 +59,45 @@ A seguir estão os serviços da AWS criados por este projeto e suas respectivas 
     - `region`: Região da AWS.
     - `lifecycle_rule`: Regras de ciclo de vida dos objetos S3.
 
-### DynamoDB
+### DynamoDB Single-Table
 
-- **Descrição**: Cria as tabelas do DynamoDB para a aplicação.
-- **Módulos**:
-    - `certificates`: Tabela de certificados.
-    - `orders`: Tabela de pedidos.
-    - `participants`: Tabela de participantes.
-    - `products`: Tabela de produtos.
-- **Variáveis (por módulo)**:
+- **Descrição**: Cria a tabela DynamoDB com padrão Single-Table Design.
+- **Módulo**: `single_table`
+- **Variáveis**:
     - `table_name`: Nome da tabela.
     - `environment`: Ambiente de deploy.
     - `project_name`: Nome do projeto.
+
+#### Estrutura da Tabela
+
+A tabela utiliza um design Single-Table com chaves compostas e 4 Global Secondary Indexes (GSIs).
+
+| Atributo | Tipo | Descrição |
+|----------|------|-----------|
+| `PK` | String | Chave de Partição principal |
+| `SK` | String | Chave de Ordenação principal |
+| `GSI1PK`, `GSI1SK` | String | GSI1 - Certificate por UUID |
+| `GSI2PK`, `GSI2SK` | String | GSI2 - Orders, Certificates, Participants por email |
+| `GSI3PK`, `GSI3SK` | String | GSI3 - Products por nome, Certificates/Orders por product |
+| `GSI4PK`, `GSI4SK` | String | GSI4 - Certificados por status de sucesso |
+
+#### GSIs (Global Secondary Indexes)
+
+| GSI | Key Schema | Access Pattern |
+|-----|------------|----------------|
+| GSI1 | `PK: UUID, SK: CERT#` | Certificate by UUID |
+| GSI2 | `PK: email, SK: ENTITY#` | Orders, Certificates, Participants by email |
+| GSI3 | `PK: product, SK: ENTITY#` | Products by name, Certificates/Orders by product |
+| GSI4 | `PK: SUCCESS#Y/N, SK: CERT#` | Successful/Failed certificates |
+
+#### Entidades Suportadas
+
+| Entidade | PK | SK | GSIs Utilizados |
+|----------|----|----|----------------|
+| Certificate | `CERTIFICATE#<uuid>` | `CERTIFICATE#<uuid>` | GSI1, GSI2, GSI3, GSI4 |
+| Order | `ORDER#<order_id>` | `ORDER#<order_id>` | GSI2, GSI3 |
+| Product | `PRODUCT#<product_id>` | `PRODUCT#<product_id>` | GSI3 |
+| Participant | `PARTICIPANT#<uuid>` | `PARTICIPANT#<uuid>` | GSI2 |
 
 ### Lambda
 
@@ -104,7 +125,129 @@ A seguir estão os serviços da AWS criados por este projeto e suas respectivas 
 - O Terraform cria as funções Lambda, roles, filas SQS, tabelas DynamoDB, bucket S3 e API Gateway.
 - Cada função é inicializada com um ZIP placeholder mínimo apenas para permitir a criação do recurso.
 - Os repositórios `certified-builder-api-py`, `certified_builder_py` e `certified-builder-notification-py` publicam o código real usando `aws lambda update-function-code`.
-- O fluxo local com Docker é apenas para emulação de runtime em `localhost:9000`.
+- O perfil MiniStack em `terraform/env/ministack` usa o backend local e endpoint `localhost:4566`; ele é separado de `terraform/env/dev`, que continua usando o backend S3 da AWS.
+
+### Deploy na AWS
+
+Para provisionar na AWS, use apenas o perfil `terraform/env/dev` e suas variáveis reais fornecidas pela configuração segura do ambiente:
+
+```sh
+cd terraform/env/dev
+terraform init
+terraform plan -out=tfplan
+terraform apply tfplan
+```
+
+Depois do provisionamento, publique os pacotes de código das três Lambdas pelos workflows dos repositórios relacionados. O `apply` do perfil `dev` cria ou altera recursos AWS; o perfil `ministack` abaixo não usa nem atualiza esse state.
+
+## Desenvolvimento e testes locais com MiniStack
+
+O Compose sobe o emulador AWS MiniStack, a API em runtime Lambda local (RIE) e o gerador de certificados. O MiniStack persiste os dados no volume Docker `ministack-data`.
+
+### Requisitos
+
+- Docker Desktop/Engine em execução.
+- Terraform instalado.
+- AWS CLI instalado (as chamadas abaixo usam apenas `--endpoint-url http://localhost:4566` e credenciais fictícias).
+
+### Subir os serviços
+
+Execute na raiz deste repositório:
+
+```sh
+docker compose -f compose.ministack.yaml up -d --build
+curl -fsS http://localhost:4566/_ministack/health
+docker compose -f compose.ministack.yaml ps
+```
+
+Portas locais:
+
+| Serviço | Endereço | Uso |
+|---------|----------|-----|
+| MiniStack | `http://localhost:4566` | APIs AWS simuladas |
+| API Lambda RIE | `http://localhost:9000` | Invocação Lambda local |
+| Gerador Lambda RIE | `http://localhost:9001` | Geração do certificado |
+| Mock Solana | apenas na rede Compose | Responde com URL de transação de teste; não envia transação real |
+
+Por padrão, a API é compilada do checkout vizinho `../certified-builder-api-py`, e o gerador de `../certified_builder_py`. Para usar outro worktree ou checkout, informe `API_BUILD_CONTEXT` ou `BUILDER_BUILD_CONTEXT` ao executar Compose. Exemplo:
+
+```sh
+API_BUILD_CONTEXT=/caminho/para/api-worktree \
+BUILDER_BUILD_CONTEXT=/caminho/para/builder-worktree \
+docker compose -f compose.ministack.yaml up -d --build
+```
+
+### Criar a infraestrutura single-table
+
+O perfil local tem provider apontado diretamente para MiniStack, credenciais fictícias e backend Terraform local. Não use credenciais AWS reais nele.
+
+```sh
+cd terraform/env/ministack
+terraform init -backend=false
+terraform apply \
+  -var='aws_account_id=000000000000' \
+  -var='github_actions_role_arn=arn:aws:iam::000000000000:role/local' \
+  -var='api_key_value=00000000-0000-4000-8000-000000000000' \
+  -var='service_url_registration_api_solana=http://example.local/register' \
+  -var='service_api_key_registration_api_solana=local-test-key' \
+  -var='tech_floripa_certificate_validate_url=http://example.local/validate'
+```
+
+O comando cria a tabela single-table, bucket S3, filas SQS, Lambdas placeholder e API Gateway no MiniStack. O estado fica em `terraform/env/ministack/terraform.tfstate`; o backend S3 de `terraform/env/dev` não é inicializado.
+
+### Testar geração de certificado
+
+O gerador recebe um evento SQS Lambda: `Records[0].body` deve ser uma string JSON contendo uma lista de participantes. Os campos de entrada são `order_id`, `product_id`, `product_name`, `email`, `first_name`, `last_name`, `certificate_details`, `certificate_logo`, `certificate_background` e `order_date` (`YYYY-MM-DD HH:MM:SS`). `time_checkin` é opcional.
+
+Crie um evento temporário com dados fictícios. As imagens usam o serviço público de placeholders; substitua-as por arquivos de teste locais se quiser executar sem acesso externo:
+
+```sh
+cat > /tmp/certificate-event.json <<'JSON'
+{
+  "Records": [{
+    "body": "[{\"order_id\":123456,\"product_id\":42,\"product_name\":\"Demo Event\",\"email\":\"alex@example.test\",\"first_name\":\"Alex\",\"last_name\":\"Example\",\"certificate_details\":\"This is a fictional certificate for local testing.\",\"certificate_logo\":\"https://placehold.co/150x150.jpg?text=Demo+Logo\",\"certificate_background\":\"https://placehold.co/1200x627.png?text=Demo+Certificate\",\"order_date\":\"2025-01-15 12:00:00\"}]"
+  }]
+}
+JSON
+
+curl -sS -X POST \
+  http://localhost:9001/2015-03-31/functions/function/invocations \
+  -H 'Content-Type: application/json' \
+  --data-binary @/tmp/certificate-event.json
+```
+
+O endpoint de invocação pode responder `200` mesmo quando a geração interna falha. Confirme o resultado pelos logs e pelo objeto S3:
+
+```sh
+docker compose -f compose.ministack.yaml logs --tail=150 certified_builder_lambda_function
+
+AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1 \
+aws s3api list-objects-v2 \
+  --endpoint-url http://localhost:4566 \
+  --bucket tech-floripa-certificates-dev-bucket \
+  --prefix certificates/42/123456/ \
+  --query 'Contents[].{Key:Key,Size:Size}' --output table
+```
+
+Uma geração bem-sucedida registra `Certificado gerado` e o upload para S3 nos logs. Uma falha registra `Erro ao gerar certificado` ou `Erro ao enviar o arquivo`. A chave final inclui o código de validação aleatório criado na execução.
+
+O gerador envia também uma notificação para SQS. As Lambdas criadas pelo Terraform usam código placeholder; portanto, a Lambda de notificação local pode consumir a mensagem sem atualizar o item no DynamoDB. Para testar atualização de status, publique o código real do repositório de notificações apontando seus clientes AWS para MiniStack. O `success` que já estiver no item de seed não comprova o resultado da execução atual.
+
+### Parar e limpar
+
+Pare os containers sem remover o volume persistente:
+
+```sh
+docker compose -f compose.ministack.yaml down
+```
+
+Para remover também os dados locais do MiniStack, remova o volume apenas quando não precisar mais do estado e dos objetos de teste:
+
+```sh
+docker compose -f compose.ministack.yaml down -v
+```
+
+Para excluir os recursos do Terraform local, execute `terraform destroy` dentro de `terraform/env/ministack`, passando as mesmas variáveis fictícias usadas no `apply`.
 
 ### SQS (Simple Queue Service)
 

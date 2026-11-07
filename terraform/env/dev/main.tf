@@ -7,31 +7,10 @@ module "s3" {
   region       = var.aws_region
 }
 
-# DynamoDB Tables
-module "certificates_table" {
-  source       = "../../modules/02.dynamodb/certificates"
-  table_name   = "${var.project_name}-certificates-${var.environment}"
-  environment  = var.environment
-  project_name = var.project_name
-}
-
-module "orders_table" {
-  source       = "../../modules/02.dynamodb/orders"
-  table_name   = "${var.project_name}-orders-${var.environment}"
-  environment  = var.environment
-  project_name = var.project_name
-}
-
-module "participants_table" {
-  source       = "../../modules/02.dynamodb/participants"
-  table_name   = "${var.project_name}-participants-${var.environment}"
-  environment  = var.environment
-  project_name = var.project_name
-}
-
-module "products_table" {
-  source       = "../../modules/02.dynamodb/products"
-  table_name   = "${var.project_name}-products-${var.environment}"
+# DynamoDB Single Table
+module "dynamodb_single_table" {
+  source       = "../../modules/02.dynamodb/single_table"
+  table_name   = "${var.project_name}-${var.environment}"
   environment  = var.environment
   project_name = var.project_name
 }
@@ -63,10 +42,7 @@ module "lambda" {
   notification_queue_arn                  = module.sqs.notification_queue_arn
   notification_queue_url                  = module.sqs.notification_queue_url
   dynamodb_table_arns = [
-    module.certificates_table.table_arn,
-    module.orders_table.table_arn,
-    module.participants_table.table_arn,
-    module.products_table.table_arn
+    module.dynamodb_single_table.table_arn
   ]
   s3_bucket_arn            = module.s3.bucket_arn
   s3_bucket_name           = module.s3.bucket_name

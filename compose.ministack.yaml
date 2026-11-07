@@ -1,0 +1,76 @@
+services:
+  ministack:
+    image: ministackorg/ministack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      MINISTACK_REGION: us-east-1
+      MINISTACK_ACCOUNT_ID: "000000000000"
+      PERSIST_STATE: "1"
+      STATE_DIR: /data/state
+      DOCKER_NETWORK: certified-builder-infra-py_default
+    volumes:
+      - ministack-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4566/_ministack/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  certified_build_lambda_function:
+    build:
+      context: ${API_BUILD_CONTEXT:-../certified-builder-api-py}
+      dockerfile: Dockerfile
+    ports:
+      - "9000:8080"
+    environment:
+      REGION: us-east-1
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_ENDPOINT_URL: http://ministack:4566
+      ENVIRONMENT: dev
+      PROJECT_NAME: tech-floripa-certificates
+      BUILDER_QUEUE_URL: http://ministack:4566/000000000000/tech-floripa-certificates-builder-queue
+      S3_BUCKET_NAME: tech-floripa-certificates-dev-bucket
+      URL_SERVICE_TECH: https://example.test/wp-json/custom/v1
+    depends_on:
+      ministack:
+        condition: service_healthy
+
+  certified_builder_lambda_function:
+    build:
+      context: ${BUILDER_BUILD_CONTEXT:-../certified_builder_py}
+      dockerfile: Dockerfile
+    ports:
+      - "9001:8080"
+    environment:
+      REGION: us-east-1
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_ENDPOINT_URL_S3: http://ministack:4566
+      AWS_ENDPOINT_URL_SQS: http://ministack:4566
+      BUCKET_NAME: tech-floripa-certificates-dev-bucket
+      QUEUE_URL: http://ministack:4566/000000000000/tech-floripa-certificates-notification-queue
+      SERVICE_URL_REGISTRATION_API_SOLANA: http://solana-mock:8081/register
+      SERVICE_API_KEY_REGISTRATION_API_SOLANA: local-test-key
+      TECH_FLORIPA_CERTIFICATE_VALIDATE_URL: http://localhost:9000/api/v1/certificate/validate
+      TECH_FLORIPA_LOGO_URL: https://placehold.co/150x150.png?text=Demo+Logo
+    depends_on:
+      ministack:
+        condition: service_healthy
+      solana-mock:
+        condition: service_started
+
+  solana-mock:
+    image: python:3.13-slim
+    command: ["python", "/mock_solana.py"]
+    volumes:
+      - ./scripts/mock_solana.py:/mock_solana.py:ro
+
+volumes:
+  ministack-data:
